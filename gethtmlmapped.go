@@ -41,7 +41,6 @@ func main() {
 }
 
 func httpGet(url string) (string, error) {
-	fmt.Println("GET", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err

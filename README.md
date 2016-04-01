@@ -1,2 +1,2 @@
 # gethtmlmapped
-Fetch HTML files listed in sitemap.xml
+Get URLs listed in sitemap.xml, and Fetch HTML files.

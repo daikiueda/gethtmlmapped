@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 
 type Options struct {
 	Count bool `short:"c" long:"count" description:"Only count listed HTML files (Disabled by default)"`
+	Date  bool `short:"d" long:"date" description:"Print last modified date (Disabled by default)"`
 	Fetch bool `short:"f" long:"fetch" description:"Fetch listed HTML files (Disabled by default)"`
 	Wait  int  `short:"w" long:"wait" default:"200" description:"Fetch duration (by milli seconds)"`
 }
@@ -26,8 +28,8 @@ var opts Options
 
 type Sitemap struct {
 	Page []struct {
-		Url     string `xml:"loc"`
-		Lastmod string `xml:"lastmod"`
+		Url     string    `xml:"loc"`
+		Lastmod time.Time `xml:"lastmod"`
 	} `xml:"url"`
 }
 
@@ -61,11 +63,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if opts.Count {
-		fmt.Println(len(contents.Page))
-		os.Exit(0)
-	}
-
 	repl := regexp.MustCompile(`^https?://`)
 
 	topdir := strings.Split(repl.ReplaceAllString(contents.Page[0].Url, ""), "/")[0]
@@ -77,8 +74,19 @@ func main() {
 	wait := time.Duration(opts.Wait) * time.Millisecond
 	succeed := []string{}
 	failed := []string{}
+	latest, _ := time.Parse(time.RFC3339, time.RFC3339)
 	for _, page := range contents.Page {
-		fmt.Println(page.Url)
+		if page.Lastmod.Unix() > latest.Unix() {
+			latest = page.Lastmod
+		}
+
+		if !opts.Count {
+			info := page.Url
+			if opts.Date {
+				info = info + "\t" + page.Lastmod.Format("2006-01-02 15:04:05")
+			}
+			fmt.Println(info)
+		}
 
 		if !opts.Fetch {
 			continue
@@ -118,11 +126,21 @@ func main() {
 		time.Sleep(wait)
 	}
 
+	if opts.Count {
+		info := strconv.Itoa(len(contents.Page))
+		if opts.Date {
+			info = info + "\t" + latest.Format("2006-01-02 15:04:05")
+		}
+		fmt.Println(info)
+		os.Exit(0)
+	}
+
 	if opts.Fetch {
 		end := time.Now()
 		fmt.Println("succeed : " + string(len(succeed)))
 		fmt.Println("failed : " + string(len(failed)))
 		fmt.Printf("%f sec.\n", (end.Sub(start)).Seconds())
+		os.Exit(0)
 	}
 }
 
